@@ -1,7 +1,9 @@
-# Excel source data files (Protected locally)
+# Source data files (Protected locally - Never upload to Git)
 *.xlsm
 *.xlsx
 *.csv
+.dataset_master.json
+*.secret.*
 
 # Python / Cache files
 __pycache__/
