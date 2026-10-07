@@ -1,0 +1,16 @@
+# Excel source data files (Protected locally)
+*.xlsm
+*.xlsx
+*.csv
+
+# Python / Cache files
+__pycache__/
+*.pyc
+*.log
+
+# Scratch / Temp files
+scratch/
+
+# Temp lock files
+.~lock.*
+~$*

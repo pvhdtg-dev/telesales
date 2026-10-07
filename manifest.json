@@ -1,0 +1,24 @@
+{
+  "name": "B2B Telesales - Quản Lý Khách Hàng",
+  "short_name": "Telesales KCN",
+  "description": "Ứng dụng gọi điện và quản lý khách hàng B2B theo khu vực KCN",
+  "start_url": "./GOI_DIEN_KHACH_HANG_THEO_KHU_VUC.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
