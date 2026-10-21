@@ -1,0 +1,23 @@
+{
+  ".gitignore": "19f5e19830bc63df00b8a417b4379fd481b8636e8c2a7f36a1b802d144309d53",
+  ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "GOI_DIEN_KHACH_HANG_THEO_KHU_VUC.html": "869190617fb6fc19a99ac0d1094b7dba3edcf7dd22e2335e1524cd27bcc65c72",
+  "README.md": "14e58869708ed015140bf89e6b9473e98f19839f1de3206768d1775aa4f0ef72",
+  "VALIDATION.md": "96562c6902f293d62a54d2859b1b69a54657fea8566eb275983fbee7e20aebec",
+  "assets/app.js": "266edbc2708b433a830f7ad523f456d18ded654afc2a020a596d23349b37e76a",
+  "assets/migration.js": "73799dde17dcea04a1b243215999915f95e37c4f48e2d4dd979cb07f564ef64b",
+  "assets/style.css": "062a5f61cc6cd499dcd8564b1964c2f2a9ef840e783e6dee3f2593ba34b3e838",
+  "assets/vendor/SUPABASE-LICENSE": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+  "assets/vendor/supabase-2.118.0.js": "ee3be8de192b97cb1d73d1e95d6b82bb1f6b658c0f97c4ef757fc331996ed3d3",
+  "config.js": "49dc13d965610b4c0c9e9a0af16bae81818d7879644e10e179f46b534e7efc52",
+  "index.html": "73e1e370b8cd855c1168f9e3a33c49fe2fbb1eaa3d6de8f66b5989d6ce9a494b",
+  "manifest.json": "635a8a44d392dec91e782d117799bcc58b62dcae4ab126a2a850c993828574cf",
+  "package-lock.json": "0a7918ae3607a9f8fa7ff65e114cb0cf577b27d7e7a8ec342ce2dc9da151eaac",
+  "package.json": "9b940f300fa4e6d11cf09e7bf093aa1481363446a454c807ea2678c83f15f046",
+  "supabase/config.toml": "7500e29c84235281062b17273b14ac3ecb9528ff62611180d5c801bd30fa8c66",
+  "supabase/functions/telesales-users/index.ts": "0897e77bd44b03cefde84a0f71ad0320dc79124c6121e6d86dd2dad5be6a2cd3",
+  "supabase/schema.sql": "dd15188e3bb50e53286931b41c722e5f593ac24b68b51eebb90d1f4af29ded54",
+  "sw.js": "725b65ae838353fad0794da22da3f5b0abce588c301969f092d3003225de08bb",
+  "tests/database.test.mjs": "ab57caeddd6edb8796bf3fc121eeaad70a070112e0becba11e63111cb92119f9",
+  "tests/migration.test.mjs": "346656649f2a2e9c95654538df07c4d543a0d8fc331911bb879b4e104fb80fa7"
+}

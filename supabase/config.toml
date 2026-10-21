@@ -1,0 +1,3 @@
+[functions.telesales-users]
+# Xác thực JWT bằng getUser(token) trong function; tương thích signing keys mới.
+verify_jwt = false

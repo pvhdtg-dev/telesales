@@ -1,41 +1,9 @@
-const CACHE_NAME = 'b2b-telesales-v1';
-const urlsToCache = [
-  './GOI_DIEN_KHACH_HANG_THEO_KHU_VUC.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
-];
-
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
-  );
-});
+// Xóa cache app cũ chứa danh bạ nhúng. Không cache dữ liệu đăng nhập/khách hàng.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil((async () => {
+  for (const key of await caches.keys()) {
+    if (key.startsWith('b2b-telesales-') || key.startsWith('telesales-team-')) await caches.delete(key);
+  }
+  await self.clients.claim();
+})()));
+// Không có fetch handler: app và API luôn dùng mạng.

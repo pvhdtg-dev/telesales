@@ -1,18 +1,6 @@
-# Source data files (Protected locally - Never upload to Git)
-*.xlsm
-*.xlsx
-*.csv
-.dataset_master.json
-*.secret.*
-
-# Python / Cache files
-__pycache__/
-*.pyc
+node_modules/
+.env
+.env.*
 *.log
-
-# Scratch / Temp files
-scratch/
-
-# Temp lock files
-.~lock.*
-~$*
+*.zip
+.DS_Store
