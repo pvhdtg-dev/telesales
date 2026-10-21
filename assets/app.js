@@ -88,11 +88,11 @@ async function logout(message = 'Đã đăng xuất khỏi hệ thống.') {
   state.selected.clear();
   try { await client.auth.signOut({scope: 'local'}); } catch {}
   sessionStorage.removeItem('telesales-team-auth');
-  $('#mainApp').classList.add('hidden');
-  $('#loginScreen').classList.remove('hidden');
-  if (message) {
+  $('#mainApp')?.classList.add('hidden');
+  $('#loginScreen')?.classList.remove('hidden');
+  if (message && $('#loginErrorText')) {
     $('#loginErrorText').textContent = message;
-    $('#loginError').classList.remove('hidden');
+    $('#loginError')?.classList.remove('hidden');
   }
 }
 
@@ -108,8 +108,8 @@ async function allRows(table, columns = '*') {
 
 async function bootstrap(session) {
   if (!session) {
-    $('#mainApp').classList.add('hidden');
-    $('#loginScreen').classList.remove('hidden');
+    $('#mainApp')?.classList.add('hidden');
+    $('#loginScreen')?.classList.remove('hidden');
     return;
   }
   if (state.profile?.id === session.user.id) return;
@@ -124,20 +124,20 @@ async function bootstrap(session) {
     if (!profile.active) return logout('Tài khoản chưa được kích hoạt hoặc đã bị tạm khóa.');
 
     state.profile = profile;
-    $('#loginError').classList.add('hidden');
-    $('#loginForm').reset();
-    $('#accountName').textContent = profile.full_name || session.user.email;
-    $('#accountRole').textContent = admin() ? 'QUẢN TRỊ' : 'NHÂN VIÊN';
+    $('#loginError')?.classList.add('hidden');
+    $('#loginForm')?.reset();
+    if ($('#accountName')) $('#accountName').textContent = profile.full_name || session.user.email;
+    if ($('#accountRole')) $('#accountRole').textContent = admin() ? 'QUẢN TRỊ' : 'NHÂN VIÊN';
     $$('.admin-only').forEach(e => e.classList.toggle('hidden', !admin()));
 
-    $('#loginScreen').classList.add('hidden');
-    $('#mainApp').classList.remove('hidden');
+    $('#loginScreen')?.classList.add('hidden');
+    $('#mainApp')?.classList.remove('hidden');
 
     await refresh();
   } catch (err) {
     if (gen === state.generation) {
-      $('#loginErrorText').textContent = errorText(err);
-      $('#loginError').classList.remove('hidden');
+      if ($('#loginErrorText')) $('#loginErrorText').textContent = errorText(err);
+      $('#loginError')?.classList.remove('hidden');
     }
   }
 }
@@ -233,7 +233,7 @@ function resetAreaFilter() {
   state.activeProvince = 'ALL';
   state.activeArea = 'ALL';
   state.page = 0;
-  $('#activeAreaLabel').textContent = 'Tất cả khu vực';
+  if ($('#activeAreaLabel')) $('#activeAreaLabel').textContent = 'Tất cả khu vực';
   buildAreaTree();
   renderContactCards();
 }
@@ -266,16 +266,21 @@ function updateStatusCounts() {
     }
   });
 
-  $('#count-ALL').textContent = counts.ALL;
-  $('#count-Chưa gọi').textContent = counts['Chưa gọi'];
-  $('#count-Hẹn gọi lại').textContent = counts['Hẹn gọi lại'];
-  $('#count-Tiềm năng').textContent = counts['Tiềm năng'];
-  $('#count-Đã gặp').textContent = counts['Đã gặp'];
-  $('#count-Sai số').textContent = counts['Sai số'];
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
 
-  $('#totalContactsBadge').textContent = state.customers.length;
+  setText('count-all', counts.ALL);
+  setText('count-chua-goi', counts['Chưa gọi']);
+  setText('count-hen-goi-lai', counts['Hẹn gọi lại']);
+  setText('count-tiem-nang', counts['Tiềm năng']);
+  setText('count-da-gap', counts['Đã gặp']);
+  setText('count-sai-so', counts['Sai số']);
+
+  setText('totalContactsBadge', state.customers.length);
   const pct = state.customers.length ? Math.round((totalCalled / state.customers.length) * 100) : 0;
-  $('#calledProgressBadge').textContent = `Đã gọi: ${totalCalled}/${state.customers.length} (${pct}%)`;
+  setText('calledProgressBadge', `Đã gọi: ${totalCalled}/${state.customers.length} (${pct}%)`);
 }
 
 function updateAdminStaffDropdowns() {
@@ -346,26 +351,26 @@ function renderContactCards() {
     return 0;
   });
 
-  countLabel.textContent = `Hiển thị ${filtered.length} liên hệ`;
+  if (countLabel) countLabel.textContent = `Hiển thị ${filtered.length} liên hệ`;
 
   if (filtered.length === 0) {
-    container.innerHTML = '';
-    emptyEl.classList.remove('hidden');
-    paginationBar.classList.add('hidden');
+    if (container) container.innerHTML = '';
+    emptyEl?.classList.remove('hidden');
+    paginationBar?.classList.add('hidden');
     return;
   }
 
-  emptyEl.classList.add('hidden');
-  paginationBar.classList.remove('hidden');
+  emptyEl?.classList.add('hidden');
+  paginationBar?.classList.remove('hidden');
 
   // Pagination slice
   const totalPages = Math.ceil(filtered.length / state.pageSize) || 1;
   if (state.page >= totalPages) state.page = totalPages - 1;
   if (state.page < 0) state.page = 0;
 
-  $('#pageLabel').textContent = `Trang ${state.page + 1} / ${totalPages}`;
-  $('#prevPageBtn').disabled = state.page === 0;
-  $('#nextPageBtn').disabled = state.page >= totalPages - 1;
+  if ($('#pageLabel')) $('#pageLabel').textContent = `Trang ${state.page + 1} / ${totalPages}`;
+  if ($('#prevPageBtn')) $('#prevPageBtn').disabled = state.page === 0;
+  if ($('#nextPageBtn')) $('#nextPageBtn').disabled = state.page >= totalPages - 1;
 
   const currentSlice = filtered.slice(state.page * state.pageSize, (state.page + 1) * state.pageSize);
 
@@ -670,7 +675,7 @@ async function openHistoryModal(cId) {
   const c = state.customers.find(item => item.id === cId);
   if (!c) return;
 
-  $('#historyCustomerName').textContent = c.customer;
+  if ($('#historyCustomerName')) $('#historyCustomerName').textContent = c.customer;
   const container = $('#historyTimeline');
   container.innerHTML = '<p class="text-slate-400 py-4 text-center">Đang tải lịch sử chăm sóc...</p>';
   $('#historyModal').showModal();
@@ -838,7 +843,7 @@ function setupListeners() {
     state.activeArea = area;
     state.page = 0;
 
-    $('#activeAreaLabel').textContent = area === 'ALL' ? prov : `${prov} > ${area}`;
+    if ($('#activeAreaLabel')) $('#activeAreaLabel').textContent = area === 'ALL' ? prov : `${prov} > ${area}`;
     buildAreaTree();
     renderContactCards();
   });
@@ -905,7 +910,7 @@ function setupListeners() {
     if (chk) {
       const id = chk.dataset.selectCard;
       chk.checked ? state.selected.add(id) : state.selected.delete(id);
-      $('#selectedCountBadge').textContent = `${state.selected.size} khách đã chọn`;
+      if ($('#selectedCountBadge')) $('#selectedCountBadge').textContent = `${state.selected.size} khách đã chọn`;
     }
 
     // Status select change
@@ -929,7 +934,7 @@ function setupListeners() {
     currentSlice.forEach(c => {
       e.target.checked ? state.selected.add(c.id) : state.selected.delete(c.id);
     });
-    $('#selectedCountBadge').textContent = `${state.selected.size} khách đã chọn`;
+    if ($('#selectedCountBadge')) $('#selectedCountBadge').textContent = `${state.selected.size} khách đã chọn`;
     renderContactCards();
   });
 
@@ -952,8 +957,8 @@ function setupListeners() {
       const {error} = await client.from('ts_customers').update({assigned_to: assignedTo}).in('id', ids);
       if (error) throw error;
       state.selected.clear();
-      $('#selectedCountBadge').textContent = '0 khách đã chọn';
-      $('#selectAllCheckbox').checked = false;
+      if ($('#selectedCountBadge')) $('#selectedCountBadge').textContent = '0 khách đã chọn';
+      if ($('#selectAllCheckbox')) $('#selectAllCheckbox').checked = false;
       toast(`Đã cập nhật phụ trách cho ${ids.length} khách hàng!`, 'success');
       await refresh();
     } catch (err) {
