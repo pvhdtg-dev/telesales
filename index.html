@@ -2,45 +2,591 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#132c42">
-  <meta name="color-scheme" content="light">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; media-src 'self' blob: https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <title>Telesales · Không gian làm việc</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; media-src 'self' blob: https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>B2B Telesales - Quản Lý Khách Hàng (Mã Hóa AES-256 & Supabase Cloud)</title>
   <link rel="manifest" href="./manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="./assets/style.css">
   <script src="./assets/vendor/supabase-2.118.0.js" defer></script>
   <script src="./config.js" defer></script>
   <script type="module" src="./assets/app.js"></script>
 </head>
-<body>
-  <section id="login-screen" class="login-screen">
-    <div class="login-story"><span class="eyebrow">TELESALES / TEAM WORKSPACE</span><h1>Mỗi cuộc gọi.<br>Một bước tiến.</h1><p>Khách hàng được phân công rõ ràng.<br>Lịch sử chăm sóc luôn tiếp nối.</p><div class="story-line"><span>01 / Khách hàng</span><span>02 / Chăm sóc</span><span>03 / Kết quả</span></div></div>
-    <div class="login-box"><span class="brand-mark">T.</span><h2>Đăng nhập</h2><p class="muted">Sử dụng tài khoản do quản trị viên cấp.</p>
-      <p id="setup-notice" class="notice" hidden>Bản nâng cấp chưa được kết nối dữ liệu. Quản trị viên cần hoàn tất cấu hình hệ thống trước khi đăng nhập.</p>
-      <form id="login-form"><label>Email<input name="email" type="email" autocomplete="username" required placeholder="ten@congty.vn"></label><label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" id="login-submit">Đăng nhập <span>→</span></button></form>
-      <p id="login-error" class="error" role="alert"></p><p class="login-foot">Dữ liệu được lưu tập trung và hiển thị theo quyền tài khoản.</p>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- ======================================================== -->
+  <!-- 1. LOGIN / UNLOCK SCREEN -->
+  <!-- ======================================================== -->
+  <section id="loginScreen" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
+      <!-- Shield Icon -->
+      <div class="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center text-2xl mb-4 shadow-lg shadow-blue-500/20">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+
+      <h2 class="text-white font-bold text-lg sm:text-xl tracking-tight">Hệ Thống Telesales B2B</h2>
+      <p class="text-slate-400 text-xs mt-1.5 leading-relaxed">
+        Phân quyền cá nhân • <b class="text-emerald-400">Đồng bộ Cloud Realtime</b><br>
+        Vui lòng đăng nhập bằng tài khoản được cấp.
+      </p>
+
+      <p id="setupNotice" class="text-amber-400 text-xs bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 mt-4 hidden">
+        Chưa hoàn tất cấu hình hệ thống Supabase.
+      </p>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="mt-6 space-y-3.5 text-left">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Email tài khoản</label>
+          <div class="relative">
+            <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-slate-500 text-xs"></i>
+            <input 
+              type="email" 
+              name="email" 
+              id="loginEmail" 
+              placeholder="ten@congty.vn" 
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-800/90 border border-slate-700 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+              autocomplete="username"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Mật khẩu</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-500 text-xs"></i>
+            <input 
+              type="password" 
+              name="password" 
+              id="loginPassword" 
+              placeholder="••••••••••••" 
+              class="w-full pl-10 pr-10 py-2.5 bg-slate-800/90 border border-slate-700 rounded-2xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+              autocomplete="current-password"
+            >
+            <button type="button" id="togglePasswordBtn" class="absolute right-3.5 top-3 text-slate-400 hover:text-white">
+              <i id="eyeIcon" class="fa-solid fa-eye-slash text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <p id="loginError" class="text-rose-400 text-xs font-semibold hidden flex items-center gap-1.5 pt-1">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="loginErrorText">Email hoặc mật khẩu không đúng!</span>
+        </p>
+
+        <button type="submit" id="loginSubmitBtn" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+          <i class="fa-solid fa-right-to-bracket text-xs"></i>
+          <span>Đăng Nhập Vào Hệ Thống</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-5 border-t border-slate-800/80 flex items-center justify-center gap-2 text-[10px] text-slate-500">
+        <i class="fa-solid fa-shield-halved text-[10px] text-emerald-500"></i>
+        <span>Bảo mật AES-256 • Supabase Cloud Sync</span>
+      </div>
     </div>
   </section>
-  <div id="workspace" hidden>
-    <aside class="sidebar"><a class="brand" href="./"><span class="brand-mark">T.</span><div>TELESALES<small>Không gian làm việc</small></div></a><span class="nav-caption">CÔNG VIỆC</span><nav aria-label="Điều hướng"><button data-view="customers" class="nav-item selected"><span>▤</span> Khách hàng <b id="nav-count">0</b></button><button data-view="reports" class="nav-item"><span>▥</span> Báo cáo nhân viên</button><button data-view="team" class="nav-item admin-only"><span>◎</span> Nhân viên</button><button data-view="migration" class="nav-item admin-only"><span>↗</span> Chuyển dữ liệu cũ</button></nav><div class="sidebar-foot"><span class="connection-dot"></span><span id="connection-label">Đang kết nối</span><small>Dữ liệu chỉ hiện sau khi kiểm tra quyền.</small></div></aside>
-    <div class="main-shell"><header><div><span class="eyebrow" id="view-eyebrow">QUẢN LÝ CHĂM SÓC</span><h1 id="view-title">Khách hàng</h1></div><div class="account"><span id="account-name"></span><span id="account-role" class="role-badge"></span><button id="refresh" class="subtle" title="Cập nhật dữ liệu">↻</button><button id="logout" class="subtle">Đăng xuất</button></div></header>
-      <div id="sync-banner" class="sync-banner" role="status" hidden></div>
-      <main>
-        <section id="customers-view" class="view">
-          <div class="metric-grid"><div class="metric"><span>Khách được quản lý</span><strong id="metric-total">0</strong><small>Trong phạm vi tài khoản</small></div><div class="metric"><span>Chưa gọi</span><strong id="metric-new">0</strong><small>Sẵn sàng bắt đầu</small></div><div class="metric"><span>Khách tiềm năng</span><strong id="metric-potential">0</strong><small>Quan tâm / hẹn gặp / chốt</small></div><div class="metric accent"><span>Đến hạn gọi lại</span><strong id="metric-due">0</strong><small>Cần chăm sóc tiếp</small></div></div>
-          <div class="section-line"><div><h2>Danh sách khách hàng</h2><p class="muted" id="customer-summary"></p></div><button id="new-customer" class="primary admin-only">+ Thêm khách</button></div>
-          <div class="filters"><input id="search" type="search" placeholder="Tìm công ty, liên hệ, số điện thoại…" aria-label="Tìm khách hàng"><select id="filter-province" aria-label="Tỉnh thành"><option value="">Tất cả tỉnh / thành</option></select><select id="filter-status" aria-label="Trạng thái"></select><select id="filter-assignee" class="admin-only" aria-label="Nhân viên"></select><label class="check"><input id="filter-due" type="checkbox"> Đến hạn</label></div>
-          <div class="bulk-bar admin-only"><label class="check"><input id="select-all" type="checkbox"> Chọn trang này</label><span id="selection-count">0 khách đã chọn</span><select id="bulk-assignee" aria-label="Giao khách cho nhân viên"></select><button id="assign" class="secondary">Giao khách</button></div>
-          <div id="customer-list" class="customer-grid" aria-live="polite"></div><div class="pagination"><button id="previous-page" class="secondary">← Trước</button><span id="page-label"></span><button id="next-page" class="secondary">Sau →</button></div>
-        </section>
-        <section id="reports-view" class="view" hidden><div class="section-line"><div><h2>Hiệu quả chăm sóc</h2><p class="muted">Đếm lần ghi nhận cuộc gọi; không xác nhận cuộc gọi đã kết nối.</p></div><button id="export-report" class="secondary admin-only">Xuất CSV</button></div><form id="report-form" class="filters"><label>Từ ngày<input id="report-start" type="date" required></label><label>Đến hết ngày<input id="report-end" type="date" required></label><button class="primary">Xem báo cáo</button></form><p class="muted">Cuộc gọi và ghi chú tính theo khoảng ngày (giờ Việt Nam). Khách được giao, tiềm năng và quá hạn là số liệu hiện tại.</p><div class="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Được giao</th><th>Lần gọi</th><th>Ghi chú</th><th>Tiềm năng</th><th>Quá hạn</th></tr></thead><tbody id="report-rows"></tbody></table></div></section>
-        <section id="team-view" class="view" hidden><div class="section-line"><div><h2>Tài khoản nhân viên</h2><p class="muted">Chỉ quản trị viên cấp và kích hoạt tài khoản.</p></div></div><form id="create-user-form" class="panel form-grid"><label>Họ và tên<input name="full_name" required maxlength="120"></label><label>Email<input name="email" type="email" autocomplete="off" required></label><label>Mật khẩu ban đầu<input name="password" type="password" minlength="12" autocomplete="new-password" required></label><button class="primary">Tạo nhân viên</button><p class="muted wide">Mật khẩu ít nhất 12 ký tự. Thông tin đăng nhập cần được anh bàn giao trực tiếp cho nhân viên.</p></form><div id="team-list" class="team-list"></div></section>
-        <section id="migration-view" class="view" hidden><div class="section-line"><div><h2>Tiếp nối dữ liệu đang có</h2><p class="muted">Chỉ quản trị viên sử dụng. Dữ liệu được nhập vào danh bạ chung trước khi giao khách.</p></div></div><div class="panel"><h3>1. Nhập danh bạ gốc</h3><p>Chọn file HTML của app cũ hoặc file JSON chứa mảng danh bạ. Với HTML, nhập mật khẩu mở khóa danh bạ cũ.</p><form id="import-contacts-form" class="form-grid"><label>Danh bạ<input id="contacts-file" type="file" accept=".html,.json" required></label><label>Mật khẩu danh bạ cũ<input id="legacy-password" type="password" autocomplete="off"></label><button class="primary">Nhập danh bạ</button></form><p class="muted">Mật khẩu chỉ dùng giải mã trên trình duyệt. Không tự gán nhân viên theo tên trong danh bạ cũ. Khách đã có cùng ID sẽ được bỏ qua.</p></div><div class="panel"><h3>2. Nhập ghi chú của từng máy</h3><p>Chọn JSON sao lưu từ app cũ. Mỗi file được lưu thành lịch sử nhập cũ, giữ nguyên ghi chú và thời gian gốc; không tính thành cuộc gọi mới.</p><form id="import-logs-form" class="form-grid"><label>File sao lưu JSON<input id="logs-file" type="file" accept=".json" required></label><button class="primary">Nhập lịch sử từ file</button><button type="button" id="import-local" class="secondary">Đọc ghi chú cũ trên máy này</button></form><p class="muted">Bản JSON chỉ lưu mã tham chiếu âm thanh, không chứa file âm thanh. Cần tải/đính kèm lại âm thanh riêng. Những lần chỉnh sửa đã bị app cũ ghi đè không thể khôi phục.</p></div><p id="migration-result" class="notice" aria-live="polite" hidden></p></section>
-      </main><footer><span>TELESALES / TEAM</span><span id="last-sync">Chưa đồng bộ</span></footer>
+
+  <!-- ======================================================== -->
+  <!-- 2. MAIN APP CONTAINER -->
+  <!-- ======================================================== -->
+  <div id="mainApp" class="hidden flex-1 flex flex-col w-full pb-16">
+    
+    <!-- Top Header -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md border-b border-slate-800">
+      <div class="px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 font-black text-sm">
+            <i class="fa-solid fa-headset"></i>
+          </div>
+          <div>
+            <h1 class="text-sm font-bold tracking-tight leading-none text-slate-100 flex items-center gap-2">
+              <span>B2B TELESALES KCN</span>
+              <span class="text-[10px] font-medium bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full border border-emerald-500/30">
+                <i class="fa-solid fa-shield-check text-[9px]"></i> AES-256 • CLOUD
+              </span>
+            </h1>
+            <p class="text-[10.5px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+              <span id="totalContactsBadge">0</span> Liên hệ chi tiết • 
+              <span id="calledProgressBadge" class="text-blue-400 font-semibold">Đã gọi: 0/0 (0%)</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- User Profile & Action Buttons -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <!-- User info badge -->
+          <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700/60 text-xs mr-1">
+            <i class="fa-solid fa-circle-user text-blue-400 text-xs"></i>
+            <span id="accountName" class="font-semibold text-slate-200 truncate max-w-[120px]">Quản trị</span>
+            <span id="accountRole" class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">ADMIN</span>
+          </div>
+
+          <!-- Common buttons -->
+          <button id="exportExcelBtn" title="Xuất dữ liệu Excel" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1.5 border border-slate-700/60 transition">
+            <i class="fa-solid fa-file-excel text-emerald-400"></i>
+            <span class="hidden sm:inline text-xs font-semibold">Xuất Excel</span>
+          </button>
+          
+          <button id="openStatsModalBtn" title="Thống kê cuộc gọi" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-slate-700/60 transition" aria-label="Thống kê">
+            <i class="fa-solid fa-chart-pie text-indigo-400"></i>
+          </button>
+
+          <!-- Admin-only buttons -->
+          <button id="openReportsModalBtn" title="Báo cáo nhân viên" class="admin-only hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-slate-700/60 transition" aria-label="Báo cáo">
+            <i class="fa-solid fa-chart-line text-purple-400"></i>
+            <span class="hidden md:inline text-xs font-semibold">Báo cáo</span>
+          </button>
+
+          <button id="openStaffModalBtn" title="Quản lý nhân viên" class="admin-only hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-slate-700/60 transition" aria-label="Nhân viên">
+            <i class="fa-solid fa-users text-cyan-400"></i>
+            <span class="hidden md:inline text-xs font-semibold">Nhân viên</span>
+          </button>
+
+          <button id="openMigrationModalBtn" title="Chuyển dữ liệu cũ" class="admin-only hidden p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs border border-amber-500/30 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-upload text-amber-400"></i>
+            <span class="hidden md:inline text-xs font-semibold">Chuyển dữ liệu</span>
+          </button>
+
+          <button id="openNewCustomerModalBtn" title="Thêm khách hàng mới" class="admin-only hidden p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs transition flex items-center gap-1 shadow-sm">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span class="hidden sm:inline text-xs font-semibold">Thêm khách</span>
+          </button>
+
+          <!-- Refresh & Logout -->
+          <button id="refreshBtn" title="Cập nhật dữ liệu tức thì" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-slate-700/60 transition" aria-label="Cập nhật">
+            <i class="fa-solid fa-rotate text-xs"></i>
+          </button>
+
+          <button id="logoutBtn" title="Đăng xuất" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 transition ml-1" aria-label="Đăng xuất">
+            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Search & Status Bar -->
+      <div class="px-4 pb-3 pt-1 bg-slate-900 border-t border-slate-800/60 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-2.5 text-slate-400 text-xs"></i>
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Tìm theo tên KH, người liên hệ, SĐT, KCN, Sales (vd: Hào, Dũng, 0909...)" 
+              class="w-full pl-9 pr-8 py-2 bg-slate-800 text-xs text-white placeholder:text-slate-500 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+            <button id="clearSearchBtn" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-white">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Staff filter for Admin -->
+          <div class="admin-only hidden">
+            <select id="filterAssignee" class="text-xs bg-slate-800 text-slate-200 border border-slate-700 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="">Tất cả nhân viên</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Filter Pills Scrollable -->
+        <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1 text-xs">
+          <button data-status-filter="ALL" id="filterBtn-ALL" class="px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap bg-blue-600 text-white shadow-sm transition">
+            Tất cả (<span id="count-ALL">0</span>)
+          </button>
+          <button data-status-filter="Chưa gọi" id="filterBtn-Chưa gọi" class="px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+            Chưa gọi (<span id="count-Chưa gọi">0</span>)
+          </button>
+          <button data-status-filter="Hẹn gọi lại" id="filterBtn-Hẹn gọi lại" class="px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-amber-300 transition">
+            Hẹn gọi lại (<span id="count-Hẹn gọi lại">0</span>)
+          </button>
+          <button data-status-filter="Tiềm năng" id="filterBtn-Tiềm năng" class="px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-emerald-300 transition">
+            Quan tâm / Tiềm năng (<span id="count-Tiềm năng">0</span>)
+          </button>
+          <button data-status-filter="Đã gặp" id="filterBtn-Đã gặp" class="px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-cyan-300 transition">
+            Đã gặp / Đã chốt (<span id="count-Đã gặp">0</span>)
+          </button>
+          <button data-status-filter="Sai số" id="filterBtn-Sai số" class="px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap bg-slate-800 hover:bg-slate-700 text-rose-300 transition">
+            Sai số / Nghỉ (<span id="count-Sai số">0</span>)
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area: Sidebar Area Tree + Cards List -->
+    <div class="flex-1 flex flex-col md:flex-row gap-3 p-3 sm:p-4 max-w-7xl w-full mx-auto">
+      
+      <!-- Area Hierarchy Navigation Sidebar -->
+      <aside class="w-full md:w-72 lg:w-80 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3 h-fit flex-shrink-0">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <i class="fa-solid fa-map-location-dot text-blue-600"></i>
+            <span>Khu Vực & KCN</span>
+          </div>
+          <button id="resetAreaFilterBtn" class="text-[11px] text-blue-600 hover:underline font-semibold">
+            Tất cả KCN
+          </button>
+        </div>
+
+        <div id="areaTreeContainer" class="space-y-1 text-xs max-h-[40vh] md:max-h-[calc(100vh-210px)] overflow-y-auto custom-scrollbar pr-1">
+          <!-- Populated by JS -->
+        </div>
+      </aside>
+
+      <!-- Customer Cards Section -->
+      <main class="flex-1 min-w-0">
+        
+        <!-- Results Bar -->
+        <div class="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-slate-200/80 shadow-sm mb-3 flex-wrap gap-2">
+          <div class="text-xs font-semibold text-slate-600 flex items-center gap-1.5 truncate">
+            <span id="activeAreaLabel" class="text-blue-700 font-bold">Tất cả khu vực</span>
+            <span class="text-slate-400">•</span>
+            <span id="renderedCountLabel" class="text-slate-500 font-normal">Đang tải danh bạ...</span>
+          </div>
+          
+          <div class="flex items-center gap-1 text-xs">
+            <label class="text-slate-400 text-[11px]">Sắp xếp:</label>
+            <select id="sortBySelect" class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="id_asc">STT Mặc định</option>
+              <option value="company_asc">Tên Công Ty (A-Z)</option>
+              <option value="contact_asc">Tên Người Liên Hệ (A-Z)</option>
+              <option value="status_asc">Trạng thái cuộc gọi</option>
+              <option value="updated_desc">Mới cập nhật nhất</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bulk Bar for Admin -->
+        <div id="bulkBar" class="admin-only hidden bg-blue-50/80 border border-blue-200 px-4 py-2 rounded-xl mb-3 flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 cursor-pointer font-semibold text-blue-900">
+              <input type="checkbox" id="selectAllCheckbox" class="rounded border-slate-300 text-blue-600 focus:ring-0">
+              <span>Chọn trang này</span>
+            </label>
+            <span id="selectedCountBadge" class="text-blue-700 font-medium">0 khách đã chọn</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select id="bulkAssigneeSelect" class="text-xs bg-white border border-blue-200 rounded-lg px-2 py-1 text-slate-700">
+              <option value="">-- Giao cho nhân viên --</option>
+            </select>
+            <button id="bulkAssignBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition">
+              Giao Khách
+            </button>
+          </div>
+        </div>
+
+        <!-- Contact Cards List Grid -->
+        <div id="contactsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-live="polite">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Pagination -->
+        <div id="paginationBar" class="mt-4 flex items-center justify-center gap-2 text-xs">
+          <button id="prevPageBtn" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition disabled:opacity-50">
+            ← Trang trước
+          </button>
+          <span id="pageLabel" class="text-slate-500 font-semibold px-2">Trang 1 / 1</span>
+          <button id="nextPageBtn" class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition disabled:opacity-50">
+            Trang sau →
+          </button>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm mt-3">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl mb-3">
+            <i class="fa-solid fa-address-book"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-700">Không tìm thấy liên hệ phù hợp</h3>
+          <p class="text-xs text-slate-400 mt-1">Thử thay đổi từ khóa tìm kiếm hoặc chọn khu vực khác.</p>
+          <button id="resetFiltersBtn" class="mt-4 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-semibold transition">
+            Đặt lại tất cả bộ lọc
+          </button>
+        </div>
+
+      </main>
     </div>
+
   </div>
-  <dialog id="customer-dialog"><div class="dialog-head"><div><span class="eyebrow">HỒ SƠ KHÁCH HÀNG</span><h2 id="detail-name"></h2></div><button data-close="customer-dialog" class="subtle" aria-label="Đóng">✕</button></div><div id="detail-contact"></div><div class="dialog-tabs"><h3>Ghi nhận chăm sóc</h3><span class="muted">Lưu thành một lần riêng</span></div><form id="activity-form" class="form-grid"><label>Loại ghi nhận<select name="event_type"><option value="call">Cuộc gọi</option><option value="note">Ghi chú / chăm sóc khác</option></select></label><label>Kết quả<select name="result" id="activity-status"></select></label><label class="wide">Nội dung<textarea name="note" rows="3" maxlength="10000" required placeholder="Khách phản hồi gì? Cần làm gì tiếp theo?"></textarea></label><label>Hẹn gọi lại<input name="next_call_at" type="datetime-local"></label><label>Âm thanh đính kèm (tối đa 25 MB)<input name="audio" type="file" accept="audio/*"></label><div class="wide form-actions"><span class="muted" id="activity-message"></span><button class="primary" id="save-activity">Lưu lần chăm sóc</button></div></form><div class="dialog-tabs"><h3>Lịch sử chăm sóc</h3><span id="history-count" class="muted"></span></div><div id="history-list" class="timeline"></div><button id="more-history" class="secondary" hidden>Xem thêm lịch sử</button><audio id="audio-player" controls hidden></audio></dialog>
-  <dialog id="new-customer-dialog"><div class="dialog-head"><h2>Thêm khách hàng</h2><button data-close="new-customer-dialog" class="subtle" aria-label="Đóng">✕</button></div><form id="new-customer-form" class="form-grid"><label class="wide">Tên công ty<input name="customer" maxlength="500" required></label><label>Người liên hệ<input name="contact"></label><label>Chức vụ<input name="position"></label><label>Điện thoại<input name="phone" type="tel"></label><label>Email<input name="email" type="email"></label><label>Tỉnh / thành<input name="province"></label><label>Khu vực / KCN<input name="area"></label><label class="wide">Địa chỉ<input name="address"></label><button class="primary wide">Thêm vào danh bạ</button></form></dialog>
-  <div id="toast" role="status" hidden></div>
-</body></html>
+
+  <!-- ======================================================== -->
+  <!-- 3. MODALS -->
+  <!-- ======================================================== -->
+
+  <!-- Stats Modal -->
+  <dialog id="statsModal" class="p-0 rounded-3xl bg-transparent backdrop:bg-black/60">
+    <div class="bg-white rounded-3xl p-6 max-w-lg w-[90vw] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-blue-600"></i>
+          <span>Thống Kê Tiến Độ Cuộc Gọi</span>
+        </h3>
+        <button data-close-modal="statsModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="statsContent" class="space-y-4 text-xs"></div>
+    </div>
+  </dialog>
+
+  <!-- Migration Modal (Admin) -->
+  <dialog id="migrationModal" class="p-0 rounded-3xl bg-transparent backdrop:bg-black/60">
+    <div class="bg-white rounded-3xl p-6 max-w-lg w-[90vw] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-upload text-amber-500"></i>
+          <span>Chuyển Dữ Liệu Cũ Sang Cloud</span>
+        </h3>
+        <button data-close-modal="migrationModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-5 text-xs text-slate-600">
+        <!-- Step 1: Import Contacts -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+          <h4 class="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span>
+            Nhập danh bạ 592 khách hàng cũ
+          </h4>
+          <p class="text-slate-500 text-[11px] mb-3">Chọn file HTML app cũ (hoặc file backup JSON) và nhập mật khẩu AES-256 danh bạ cũ để giải mã.</p>
+
+          <form id="importContactsForm" class="space-y-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">File HTML hoặc JSON</label>
+              <input type="file" id="contactsFileInput" accept=".html,.json" required class="w-full text-xs p-2 bg-white border border-slate-200 rounded-xl">
+            </div>
+
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Mật khẩu danh bạ cũ</label>
+              <input type="password" id="legacyPasswordInput" placeholder="Nhập mật khẩu mở khóa danh bạ cũ..." class="w-full text-xs p-2 bg-white border border-slate-200 rounded-xl">
+            </div>
+
+            <button type="submit" id="importContactsBtn" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition">
+              <i class="fa-solid fa-file-import mr-1"></i> Giải Mã & Nhập Danh Bạ
+            </button>
+          </form>
+        </div>
+
+        <!-- Step 2: Import Logs -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+          <h4 class="font-bold text-slate-800 text-sm mb-1 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">2</span>
+            Nhập lịch sử cuộc gọi & ghi chú cũ
+          </h4>
+          <p class="text-slate-500 text-[11px] mb-3">Nhập ghi chú từ bộ nhớ trình duyệt máy này hoặc từ file JSON sao lưu.</p>
+
+          <div class="space-y-2">
+            <button id="importLocalLogsBtn" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition">
+              <i class="fa-solid fa-laptop mr-1"></i> Đọc Ghi Chú Cũ Trên Trình Duyệt Này
+            </button>
+
+            <form id="importLogsFileForm" class="pt-2 border-t border-slate-200/80">
+              <label class="block font-semibold text-slate-700 mb-1">Hoặc chọn file JSON sao lưu ghi chú</label>
+              <div class="flex gap-2">
+                <input type="file" id="logsFileInput" accept=".json" class="flex-1 text-xs p-1.5 bg-white border border-slate-200 rounded-xl">
+                <button type="submit" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition">
+                  Nhập
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="migrationNotice" class="p-3 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs hidden"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Staff Management Modal (Admin) -->
+  <dialog id="staffModal" class="p-0 rounded-3xl bg-transparent backdrop:bg-black/60">
+    <div class="bg-white rounded-3xl p-6 max-w-lg w-[90vw] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-users text-cyan-600"></i>
+          <span>Quản Lý Nhân Viên Telesales</span>
+        </h3>
+        <button data-close-modal="staffModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Create Staff Form -->
+      <form id="createStaffForm" class="p-4 rounded-2xl bg-slate-50 border border-slate-200 mb-4 space-y-2.5 text-xs">
+        <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Tạo tài khoản nhân viên mới</h4>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Họ và tên</label>
+          <input type="text" name="full_name" required placeholder="Nguyễn Văn A" class="w-full text-xs p-2 bg-white border border-slate-200 rounded-xl">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Email đăng nhập</label>
+          <input type="email" name="email" required placeholder="nhanvien@congty.vn" class="w-full text-xs p-2 bg-white border border-slate-200 rounded-xl">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Mật khẩu ban đầu (ít nhất 6 ký tự)</label>
+          <input type="password" name="password" required minlength="6" placeholder="Mật khẩu bí mật..." class="w-full text-xs p-2 bg-white border border-slate-200 rounded-xl">
+        </div>
+        <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition">
+          + Thêm Nhân Viên
+        </button>
+      </form>
+
+      <!-- Staff List -->
+      <div>
+        <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider mb-2">Danh sách nhân viên</h4>
+        <div id="staffListContainer" class="space-y-2 text-xs">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Employee Reports Modal (Admin) -->
+  <dialog id="reportsModal" class="p-0 rounded-3xl bg-transparent backdrop:bg-black/60">
+    <div class="bg-white rounded-3xl p-6 max-w-3xl w-[95vw] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-purple-600"></i>
+          <span>Báo Cáo Hiệu Quả Telesales Theo Kỳ</span>
+        </h3>
+        <button data-close-modal="reportsModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Date Range Filters -->
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-4 text-xs">
+        <form id="reportFilterForm" class="flex items-center gap-2 flex-wrap">
+          <label class="flex items-center gap-1 font-semibold text-slate-600">
+            Từ ngày:
+            <input type="date" id="reportStartDate" required class="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+          </label>
+          <label class="flex items-center gap-1 font-semibold text-slate-600">
+            Đến hết:
+            <input type="date" id="reportEndDate" required class="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+          </label>
+          <button type="submit" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition">
+            Xem Báo Cáo
+          </button>
+        </form>
+
+        <button id="exportReportCsvBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-file-csv text-emerald-400"></i>
+          <span>Xuất Báo Cáo CSV</span>
+        </button>
+      </div>
+
+      <!-- Report Table -->
+      <div class="border border-slate-200 rounded-2xl overflow-hidden">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+            <tr>
+              <th class="p-2.5">Nhân viên</th>
+              <th class="p-2.5 text-center">Đang phụ trách</th>
+              <th class="p-2.5 text-center">Số cuộc gọi</th>
+              <th class="p-2.5 text-center">Số ghi chú</th>
+              <th class="p-2.5 text-center text-emerald-600">Tiềm năng</th>
+              <th class="p-2.5 text-center text-rose-600">Quá hạn</th>
+            </tr>
+          </thead>
+          <tbody id="reportTableBody" class="divide-y divide-slate-100">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Customer History Modal -->
+  <dialog id="historyModal" class="p-0 rounded-3xl bg-transparent backdrop:bg-black/60">
+    <div class="bg-white rounded-3xl p-6 max-w-lg w-[90vw] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div>
+          <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Lịch sử chăm sóc</span>
+          <h3 id="historyCustomerName" class="text-sm font-bold text-slate-800">Tên khách hàng</h3>
+        </div>
+        <button data-close-modal="historyModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="historyTimeline" class="space-y-3 text-xs">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </dialog>
+
+  <!-- New Customer Modal (Admin) -->
+  <dialog id="newCustomerModal" class="p-0 rounded-3xl bg-transparent backdrop:bg-black/60">
+    <div class="bg-white rounded-3xl p-6 max-w-md w-[90vw] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-blue-600"></i>
+          <span>Thêm Khách Hàng Mới</span>
+        </h3>
+        <button data-close-modal="newCustomerModal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="newCustomerForm" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Tên công ty / Doanh nghiệp *</label>
+          <input type="text" name="customer" required placeholder="Công ty TNHH ABC..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Người liên hệ</label>
+            <input type="text" name="contact" placeholder="Anh Hào..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Chức vụ</label>
+            <input type="text" name="position" placeholder="Giám đốc / Mua hàng..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Số điện thoại</label>
+            <input type="tel" name="phone" placeholder="0901234567..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Email</label>
+            <input type="email" name="email" placeholder="contact@congty.vn..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Tỉnh / Thành phố</label>
+            <input type="text" name="province" placeholder="Bình Dương..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Khu vực / KCN</label>
+            <input type="text" name="area" placeholder="KCN VSIP 1..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Địa chỉ chi tiết</label>
+          <input type="text" name="address" placeholder="Đường số 5, KCN VSIP 1..." class="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition">
+          Thêm Khách Hàng Vào Danh Sách
+        </button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Audio elements & Toast -->
+  <input type="file" id="nativeAudioFileInput" accept="audio/*" class="hidden">
+  <audio id="audioPlayer" controls class="hidden"></audio>
+  <div id="toast" class="fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold text-white bg-slate-900/95 border border-slate-700 backdrop-blur-sm transition-all transform duration-200 translate-y-10 opacity-0 pointer-events-none"></div>
+
+</body>
+</html>
