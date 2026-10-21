@@ -467,20 +467,22 @@ function renderContactCards() {
           
           <!-- 1-Touch Action Buttons: Dial & Zalo -->
           <div class="grid grid-cols-2 gap-2">
-            <a 
-              href="tel:${escape(cleanPhone)}" 
+            <button 
+              type="button"
               data-quick-call="${escape(c.id)}" 
-              class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+              data-phone="${escape(cleanPhone)}"
+              class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
             >
               <i class="fa-solid fa-phone-volume text-xs animate-pulse"></i>
               <span>Gọi Ngay</span>
-            </a>
+            </button>
 
             <a 
               href="https://zalo.me/${escape(cleanPhone)}" 
               target="_blank"
+              rel="noopener noreferrer"
               data-quick-zalo="${escape(c.id)}" 
-              class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+              class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
             >
               <i class="fa-solid fa-comment-dots text-xs"></i>
               <span>Nhắn Zalo</span>
@@ -534,13 +536,18 @@ function renderContactCards() {
 // ========================================================
 // PERSIST UPDATE TO SUPABASE
 // ========================================================
-async function persistContactUpdate(cId, status, callNote) {
+async function persistContactUpdate(cId, status, callNote, forceCall = false) {
   const c = state.customers.find(item => item.id === cId);
   if (!c) return;
 
   const noteChanged = (callNote !== undefined && callNote !== c.call_note);
   const statusChanged = (status !== undefined && status !== c.status);
-  if (!noteChanged && !statusChanged) return;
+  if (!noteChanged && !statusChanged && !forceCall) return;
+
+  const oldStatus = c.status;
+  const oldNote = c.call_note;
+  const oldUpdatedAt = c.updated_at;
+  const oldAssignedTo = c.assigned_to;
 
   const newStatus = status !== undefined ? status : c.status;
   const newNote = callNote !== undefined ? callNote : (c.call_note || '');
@@ -549,44 +556,68 @@ async function persistContactUpdate(cId, status, callNote) {
   c.status = newStatus;
   c.call_note = newNote;
   c.updated_at = new Date().toISOString();
+  if (!c.assigned_to && state.profile?.id) {
+    c.assigned_to = state.profile.id;
+  }
 
   updateStatusCounts();
   renderContactCards();
 
   try {
     // 1. Log activity in ts_activities
-    const eventType = statusChanged ? 'call' : 'note';
-    await client.rpc('ts_log_activity', {
+    const eventType = (forceCall || statusChanged) ? 'call' : 'note';
+    const noteText = newNote || (statusChanged ? `Chuyển trạng thái sang: ${newStatus}` : (forceCall ? 'Thực hiện cuộc gọi' : '(Không có ghi chú)'));
+    const { error } = await client.rpc('ts_log_activity', {
       p_id: crypto.randomUUID(),
       p_customer_id: cId,
       p_event_type: eventType,
       p_result: newStatus,
-      p_note: newNote || (statusChanged ? `Chuyển trạng thái sang: ${newStatus}` : '(Không có ghi chú)')
+      p_note: noteText
     });
+    if (error) throw error;
 
     toast('Đã lưu kết quả lên hệ thống', 'success');
   } catch (err) {
-    toast(errorText(err), 'error');
+    // Revert optimistic update
+    c.status = oldStatus;
+    c.call_note = oldNote;
+    c.updated_at = oldUpdatedAt;
+    c.assigned_to = oldAssignedTo;
+    updateStatusCounts();
+    renderContactCards();
+
+    toast('Lỗi lưu cuộc gọi: ' + errorText(err), 'error');
+    console.error('Lỗi persistContactUpdate:', err);
     await refresh();
+    throw err;
   }
 }
 
 // ========================================================
 // ACTIONS: CALL, ZALO, EXCEL, AUDIO
 // ========================================================
-function handleQuickCallClick(cId) {
+async function handleQuickCallClick(cId, phone) {
   const c = state.customers.find(item => item.id === cId);
-  if (c && c.status === "Chưa gọi") {
-    persistContactUpdate(cId, "3. Hẹn gọi lại", c.call_note);
-  } else if (c) {
-    persistContactUpdate(cId, c.status, c.call_note);
+  if (!c) return;
+  const nextStatus = (c.status === "Chưa gọi") ? "3. Hẹn gọi lại" : c.status;
+  try {
+    await persistContactUpdate(cId, nextStatus, c.call_note, true);
+  } catch (err) {
+    // Error is already toasted and reverted in persistContactUpdate
+    return;
+  }
+
+  if (phone) {
+    window.location.href = 'tel:' + phone;
   }
 }
 
-function handleZaloClick(cId) {
+async function handleZaloClick(cId) {
   const c = state.customers.find(item => item.id === cId);
   if (c && c.status === "Chưa gọi") {
-    persistContactUpdate(cId, "5. Đã kết nối Zalo / Gửi tài liệu", c.call_note);
+    try {
+      await persistContactUpdate(cId, "5. Đã kết nối Zalo / Gửi tài liệu", c.call_note);
+    } catch {}
   }
 }
 
@@ -875,7 +906,7 @@ function setupListeners() {
   });
 
   // Card Grid Delegations
-  $('#contactsContainer')?.addEventListener('click', e => {
+  $('#contactsContainer')?.addEventListener('click', async e => {
     // Copy phone
     const copyBtn = e.target.closest('[data-copy-phone]');
     if (copyBtn) {
@@ -886,7 +917,8 @@ function setupListeners() {
     // Quick call
     const callBtn = e.target.closest('[data-quick-call]');
     if (callBtn) {
-      handleQuickCallClick(callBtn.dataset.quickCall);
+      e.preventDefault();
+      await handleQuickCallClick(callBtn.dataset.quickCall, callBtn.dataset.phone);
       return;
     }
 
@@ -1034,13 +1066,14 @@ function setupListeners() {
       const {error: upErr} = await client.storage.from('telesales-audio').upload(storagePath, file);
       if (upErr) throw upErr;
 
-      await client.rpc('ts_log_activity', {
+      const {error: actErr} = await client.rpc('ts_log_activity', {
         p_id: crypto.randomUUID(),
         p_customer_id: cId,
         p_event_type: 'note',
         p_note: `Đã đính kèm file ghi âm: ${file.name}`,
         p_attachment_path: storagePath
       });
+      if (actErr) throw actErr;
 
       toast('Đã lưu file ghi âm thành công!', 'success');
       await refresh();
@@ -1182,7 +1215,7 @@ async function importLogsJson(content) {
       const {data: existing} = await client.from('ts_activities').select('id').eq('legacy_key', key).limit(1);
       if (existing?.length) { skipped++; continue; }
 
-      await client.rpc('ts_log_activity', {
+      const {error: impErr} = await client.rpc('ts_log_activity', {
         p_id: crypto.randomUUID(),
         p_customer_id: map.get(row.legacy_id),
         p_event_type: 'legacy_import',
@@ -1191,6 +1224,7 @@ async function importLogsJson(content) {
         p_legacy_key: key,
         p_legacy_time: row.legacy_time || null
       });
+      if (impErr) throw impErr;
       saved++;
       if (saved % 25 === 0) notice.textContent = `Đã nhập ${saved} ghi chú...`;
     }

@@ -67,7 +67,7 @@ language sql stable security definer set search_path = '' as $$
   select (select auth.uid()) is not null and exists (
     select 1 from public.ts_profiles p join public.ts_customers c on c.id = p_customer
     where p.id = (select auth.uid()) and p.active
-      and (p.role = 'admin' or c.assigned_to = p.id)
+      and (p.role = 'admin' or c.assigned_to = p.id or c.assigned_to is null)
   );
 $$;
 revoke all on function telesales_private.current_role() from public;
@@ -97,7 +97,7 @@ create policy ts_profiles_manage_staff on public.ts_profiles for update to authe
   with check ((select telesales_private.current_role()) = 'admin' and role = 'staff');
 create policy ts_customers_read on public.ts_customers for select to authenticated
   using ((select telesales_private.current_role()) = 'admin'
-    or ((select telesales_private.current_role()) = 'staff' and assigned_to = (select auth.uid())));
+    or ((select telesales_private.current_role()) = 'staff' and (assigned_to = (select auth.uid()) or assigned_to is null)));
 create policy ts_customers_create on public.ts_customers for insert to authenticated
   with check ((select telesales_private.current_role()) = 'admin');
 create policy ts_customers_assign on public.ts_customers for update to authenticated
@@ -126,6 +126,13 @@ begin
   if auth.uid() is null then raise exception 'Cần đăng nhập'; end if;
   select * into p from public.ts_profiles where id = auth.uid() and active;
   select * into c from public.ts_customers where id = new.customer_id for update;
+
+  -- Nếu khách hàng chưa giao và người thao tác là nhân viên, tự động nhận khách cho nhân viên
+  if c.assigned_to is null and p.role = 'staff' then
+    update public.ts_customers set assigned_to = p.id where id = c.id;
+    c.assigned_to := p.id;
+  end if;
+
   if p.id is null or c.id is null or (p.role <> 'admin' and c.assigned_to is distinct from p.id) then
     raise exception 'Không có quyền cập nhật khách hàng này';
   end if;
