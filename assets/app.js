@@ -36,7 +36,12 @@ const state = {
   generation: 0,
   refreshing: false,
   currentRecordingContactId: null,
-  activeAudioUrl: null
+  activeAudioUrl: null,
+  activeRecorder: null,
+  activeRecordingStream: null,
+  recordingTimerInterval: null,
+  recordingStartTime: 0,
+  recordedChunks: []
 };
 
 let client;
@@ -81,6 +86,7 @@ function copyToClipboard(text) {
 // AUTHENTICATION & BOOTSTRAP
 // ========================================================
 async function logout(message = 'Đã đăng xuất khỏi hệ thống.') {
+  cleanupRecordingUI();
   state.generation++;
   state.profile = null;
   state.customers = [];
@@ -607,9 +613,184 @@ async function handleQuickCallClick(cId, phone) {
     return;
   }
 
+  // Tự động kích hoạt ghi âm cuộc gọi trên Web qua Micro
+  startVoiceRecording(cId);
+
   if (phone) {
     window.location.href = 'tel:' + phone;
   }
+}
+
+// ========================================================
+// IN-BROWSER AUDIO RECORDING ENGINE (Web MediaRecorder API)
+// ========================================================
+async function startVoiceRecording(customerId) {
+  const c = state.customers.find(item => item.id === customerId);
+  if (!c) return;
+
+  // If already recording for this customer, do nothing
+  if (state.activeRecorder && state.activeRecorder.state === 'recording') {
+    if (state.currentRecordingContactId === customerId) {
+      toast('Đang ghi âm cho cuộc gọi này!', 'info');
+      return;
+    }
+    toast('Đang có một cuộc gọi khác đang ghi âm. Vui lòng bấm "Lưu ghi âm" trước.', 'info');
+    return;
+  }
+
+  // Check browser support
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+    toast('Trình duyệt không hỗ trợ ghi âm trực tiếp qua Web MediaRecorder.', 'info');
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+
+    state.activeRecordingStream = stream;
+    state.recordedChunks = [];
+    state.currentRecordingContactId = customerId;
+
+    // Pick best supported MIME type
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/wav'
+    ];
+    const selectedMime = mimeTypes.find(m => window.MediaRecorder.isTypeSupported(m)) || '';
+
+    const recorder = selectedMime ?
+      new MediaRecorder(stream, { mimeType: selectedMime }) :
+      new MediaRecorder(stream);
+
+    recorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        state.recordedChunks.push(e.data);
+      }
+    };
+
+    recorder.start(1000); // 1-second timeslices
+    state.activeRecorder = recorder;
+    state.recordingStartTime = Date.now();
+
+    // Show floating recording bar
+    const bar = $('#callRecordingBar');
+    if (bar) {
+      if ($('#recordingCustomerName')) $('#recordingCustomerName').textContent = c.customer || c.phone;
+      if ($('#recordingTimer')) $('#recordingTimer').textContent = '00:00';
+      bar.classList.remove('hidden');
+    }
+
+    if (state.recordingTimerInterval) clearInterval(state.recordingTimerInterval);
+    state.recordingTimerInterval = setInterval(() => {
+      const elapsedSec = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+      const m = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+      const s = String(elapsedSec % 60).padStart(2, '0');
+      if ($('#recordingTimer')) $('#recordingTimer').textContent = `${m}:${s}`;
+    }, 1000);
+
+    toast(`Đang ghi âm cuộc gọi: ${c.customer}`, 'info');
+  } catch (err) {
+    console.warn('Microphone permission or error:', err);
+    toast('Chưa cấp quyền Micro hoặc máy tính không có micro để ghi âm.', 'info');
+  }
+}
+
+async function stopAndSaveVoiceRecording() {
+  if (!state.activeRecorder || state.activeRecorder.state === 'inactive') {
+    cleanupRecordingUI();
+    return;
+  }
+
+  const customerId = state.currentRecordingContactId;
+  const elapsedSec = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+  const m = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+  const s = String(elapsedSec % 60).padStart(2, '0');
+  const durationText = `${m}:${s}`;
+
+  toast('Đang nén và lưu file ghi âm lên Supabase...', 'info');
+
+  return new Promise((resolve) => {
+    state.activeRecorder.onstop = async () => {
+      try {
+        const mime = state.activeRecorder?.mimeType || 'audio/webm';
+        const ext = mime.includes('mp4') ? 'mp4' : mime.includes('ogg') ? 'ogg' : mime.includes('wav') ? 'wav' : 'webm';
+        const blob = new Blob(state.recordedChunks, { type: mime });
+
+        // Stop all audio tracks
+        if (state.activeRecordingStream) {
+          state.activeRecordingStream.getTracks().forEach(t => t.stop());
+          state.activeRecordingStream = null;
+        }
+
+        const fileName = `call_${Date.now()}.${ext}`;
+        const storagePath = `${customerId}/${state.profile.id}/${fileName}`;
+
+        // 1. Upload to Supabase Storage
+        const { error: upErr } = await client.storage.from('telesales-audio').upload(storagePath, blob, {
+          contentType: mime,
+          upsert: true
+        });
+        if (upErr) throw upErr;
+
+        // 2. Log activity
+        const c = state.customers.find(item => item.id === customerId);
+        const currentStatus = c ? c.status : '3. Hẹn gọi lại';
+        const { error: rpcErr } = await client.rpc('ts_log_activity', {
+          p_id: crypto.randomUUID(),
+          p_customer_id: customerId,
+          p_event_type: 'call',
+          p_result: currentStatus,
+          p_note: `Ghi âm cuộc gọi (${durationText})`,
+          p_attachment_path: storagePath
+        });
+        if (rpcErr) throw rpcErr;
+
+        toast(`Đã lưu bản ghi âm cuộc gọi (${durationText}) thành công!`, 'success');
+        await refresh();
+      } catch (err) {
+        toast('Lỗi lưu file ghi âm: ' + errorText(err), 'error');
+        console.error('Lỗi upload ghi âm:', err);
+      } finally {
+        cleanupRecordingUI();
+        resolve();
+      }
+    };
+
+    state.activeRecorder.stop();
+  });
+}
+
+function cancelVoiceRecording() {
+  if (state.activeRecorder && state.activeRecorder.state !== 'inactive') {
+    state.activeRecorder.onstop = null;
+    state.activeRecorder.stop();
+  }
+  if (state.activeRecordingStream) {
+    state.activeRecordingStream.getTracks().forEach(t => t.stop());
+    state.activeRecordingStream = null;
+  }
+  cleanupRecordingUI();
+  toast('Đã hủy ghi âm cuộc gọi.', 'info');
+}
+
+function cleanupRecordingUI() {
+  state.activeRecorder = null;
+  state.recordedChunks = [];
+  state.currentRecordingContactId = null;
+  if (state.recordingTimerInterval) {
+    clearInterval(state.recordingTimerInterval);
+    state.recordingTimerInterval = null;
+  }
+  $('#callRecordingBar')?.classList.add('hidden');
 }
 
 async function handleZaloClick(cId) {
@@ -715,6 +896,7 @@ async function openHistoryModal(cId) {
   const c = state.customers.find(item => item.id === cId);
   if (!c) return;
 
+  state.currentRecordingContactId = cId;
   if ($('#historyCustomerName')) $('#historyCustomerName').textContent = c.customer;
   const container = $('#historyTimeline');
   container.innerHTML = '<p class="text-slate-400 py-4 text-center">Đang tải lịch sử chăm sóc...</p>';
@@ -729,13 +911,29 @@ async function openHistoryModal(cId) {
       return;
     }
 
+    // Generate signed URLs for activities with audio recordings
+    const audioUrlMap = new Map();
+    await Promise.all(data.map(async act => {
+      if (act.attachment_path) {
+        try {
+          const { data: signData, error: signErr } = await client.storage.from('telesales-audio').createSignedUrl(act.attachment_path, 3600);
+          if (!signErr && signData?.signedUrl) {
+            audioUrlMap.set(act.id, signData.signedUrl);
+          }
+        } catch (e) {
+          console.warn('Error signing audio URL:', e);
+        }
+      }
+    }));
+
     container.innerHTML = data.map(act => {
       const typeLabel = act.event_type === 'call' ? 'Cuộc gọi' :
         act.event_type === 'note' ? 'Ghi chú' :
         act.event_type === 'assignment' ? 'Phân công' : 'Dữ liệu cũ';
+      const audioUrl = audioUrlMap.get(act.id);
 
       return `
-        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
+        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
           <div class="flex items-center justify-between text-[11px]">
             <span class="font-bold text-blue-700 flex items-center gap-1.5">
               <i class="fa-solid ${act.event_type === 'call' ? 'fa-phone' : 'fa-comment'} text-[10px]"></i>
@@ -745,6 +943,19 @@ async function openHistoryModal(cId) {
           </div>
           ${act.result ? `<div class="font-semibold text-slate-800 text-[11.5px]">Kết quả: <span class="text-blue-600">${escape(act.result)}</span></div>` : ''}
           <p class="text-slate-600 text-xs whitespace-pre-wrap">${escape(act.note || '')}</p>
+          ${audioUrl ? `
+            <div class="mt-2 p-2 bg-white rounded-xl border border-rose-200/80 shadow-xs flex flex-col gap-1.5">
+              <div class="flex items-center justify-between text-[11px] font-semibold text-rose-600">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-microphone-lines text-xs animate-pulse"></i> File ghi âm cuộc gọi
+                </span>
+                <a href="${escape(audioUrl)}" target="_blank" rel="noopener noreferrer" download="ghi_am_${act.id.slice(0,8)}.webm" class="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-[10.5px]">
+                  <i class="fa-solid fa-download"></i> Tải về
+                </a>
+              </div>
+              <audio controls preload="metadata" class="w-full h-8" src="${escape(audioUrl)}"></audio>
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('');
@@ -936,11 +1147,19 @@ function setupListeners() {
       return;
     }
 
-    // Audio upload
+    // In-browser Audio recording button on card
     const audioBtn = e.target.closest('[data-upload-audio]');
     if (audioBtn) {
-      state.currentRecordingContactId = audioBtn.dataset.uploadAudio;
-      $('#nativeAudioFileInput').click();
+      const cId = audioBtn.dataset.uploadAudio;
+      if (state.activeRecorder && state.activeRecorder.state === 'recording') {
+        if (state.currentRecordingContactId === cId) {
+          stopAndSaveVoiceRecording();
+        } else {
+          toast('Đang ghi âm cho khách hàng khác. Vui lòng bấm "Lưu ghi âm" trước.', 'info');
+        }
+      } else {
+        startVoiceRecording(cId);
+      }
       return;
     }
   });
@@ -1054,6 +1273,20 @@ function setupListeners() {
     b.addEventListener('click', () => $('#' + b.dataset.closeModal)?.close());
   });
 
+  // Floating Recording Bar Buttons
+  $('#btnStopAndSaveRecord')?.addEventListener('click', () => {
+    stopAndSaveVoiceRecording();
+  });
+
+  $('#btnCancelRecord')?.addEventListener('click', () => {
+    cancelVoiceRecording();
+  });
+
+  // Upload button in history modal
+  $('#btnUploadAudioHistory')?.addEventListener('click', () => {
+    $('#nativeAudioFileInput').click();
+  });
+
   // Native audio file upload
   $('#nativeAudioFileInput')?.addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -1077,6 +1310,9 @@ function setupListeners() {
 
       toast('Đã lưu file ghi âm thành công!', 'success');
       await refresh();
+      if ($('#historyModal')?.open) {
+        openHistoryModal(cId);
+      }
     } catch (err) {
       toast(errorText(err), 'error');
     } finally {

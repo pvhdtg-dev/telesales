@@ -508,9 +508,14 @@
           <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Lịch sử chăm sóc</span>
           <h3 id="historyCustomerName" class="text-sm font-bold text-slate-800">Tên khách hàng</h3>
         </div>
-        <button data-close-modal="historyModal" class="text-slate-400 hover:text-slate-600 p-1">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="btnUploadAudioHistory" type="button" class="text-[11px] font-semibold text-slate-600 hover:text-blue-600 flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer" title="Tải file âm thanh có sẵn từ máy tính">
+            <i class="fa-solid fa-cloud-arrow-up text-blue-500"></i> Đính kèm file
+          </button>
+          <button data-close-modal="historyModal" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
       </div>
 
       <div id="historyTimeline" class="space-y-3 text-xs">
@@ -582,6 +587,51 @@
       </form>
     </div>
   </dialog>
+
+  <!-- Floating Call Recording Bar (Web In-Browser Recorder) -->
+  <div id="callRecordingBar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900/95 text-white px-5 py-3 rounded-2xl shadow-2xl border border-rose-500/50 flex items-center gap-4 backdrop-blur-md transition-all">
+    <div class="flex items-center gap-2.5">
+      <span class="relative flex h-3.5 w-3.5">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600"></span>
+      </span>
+      <div class="flex flex-col">
+        <div class="text-[10px] text-rose-300 font-semibold uppercase tracking-wider flex items-center gap-1">
+          <i class="fa-solid fa-circle-dot text-[8px] animate-pulse"></i> Đang ghi âm cuộc gọi
+        </div>
+        <div id="recordingCustomerName" class="text-xs font-bold text-slate-100 max-w-[200px] truncate">Công ty</div>
+      </div>
+    </div>
+
+    <!-- Timer display -->
+    <div class="bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl font-mono text-xs font-bold text-rose-400 tracking-wider flex items-center gap-1.5 shadow-inner">
+      <i class="fa-solid fa-microphone text-[10px] animate-pulse"></i>
+      <span id="recordingTimer">00:00</span>
+    </div>
+
+    <!-- Control buttons -->
+    <div class="flex items-center gap-2">
+      <button 
+        type="button" 
+        id="btnStopAndSaveRecord" 
+        class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+        title="Dừng và lưu file ghi âm vào lịch sử khách hàng"
+      >
+        <i class="fa-solid fa-floppy-disk text-xs"></i>
+        <span>Lưu ghi âm</span>
+      </button>
+
+      <button 
+        type="button" 
+        id="btnCancelRecord" 
+        class="bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-200 text-xs px-2.5 py-1.5 rounded-xl border border-slate-700 transition active:scale-95 cursor-pointer"
+        title="Hủy bỏ ghi âm (không lưu file)"
+      >
+        <i class="fa-solid fa-xmark text-xs"></i>
+        <span>Hủy</span>
+      </button>
+    </div>
+  </div>
 
   <!-- Audio elements & Toast -->
   <input type="file" id="nativeAudioFileInput" accept="audio/*" class="hidden">
