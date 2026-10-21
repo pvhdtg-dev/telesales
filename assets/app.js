@@ -400,9 +400,18 @@ function renderContactCards() {
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
                   #${escape(c.legacy_id || c.id.slice(0,6))}
                 </span>
-                <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
-                  <i class="fa-solid fa-user-tag text-[9px] text-slate-400"></i> ${escape(assigneeName)}
-                </span>
+                ${admin() ? `
+                  <select data-assign-single="${escape(c.id)}" class="text-[10px] font-semibold bg-slate-100 hover:bg-white border border-slate-300 rounded-md px-1.5 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">-- Chưa giao --</option>
+                    ${state.profiles.filter(p => p.role === 'staff' && p.active).map(s => `
+                      <option value="${escape(s.id)}" ${c.assigned_to === s.id ? 'selected' : ''}>${escape(s.full_name || 'Nhân viên')}</option>
+                    `).join('')}
+                  </select>
+                ` : `
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                    <i class="fa-solid fa-user-tag text-[9px] text-slate-400"></i> ${escape(assigneeName)}
+                  </span>
+                `}
                 ${c.origin ? `<span class="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">${escape(c.origin)}</span>` : ''}
               </div>
               <h3 class="font-bold text-slate-900 text-sm mt-1.5 leading-snug tracking-tight">
@@ -905,7 +914,7 @@ function setupListeners() {
   });
 
   // Card select checkbox
-  $('#contactsContainer')?.addEventListener('change', e => {
+  $('#contactsContainer')?.addEventListener('change', async e => {
     const chk = e.target.closest('[data-select-card]');
     if (chk) {
       const id = chk.dataset.selectCard;
@@ -917,6 +926,21 @@ function setupListeners() {
     const stSelect = e.target.closest('[data-status-select]');
     if (stSelect) {
       persistContactUpdate(stSelect.dataset.statusSelect, stSelect.value);
+    }
+
+    // Single assign dropdown change (Admin)
+    const assignSelect = e.target.closest('[data-assign-single]');
+    if (assignSelect) {
+      const cId = assignSelect.dataset.assignSingle;
+      const staffId = assignSelect.value || null;
+      try {
+        const {error} = await client.from('ts_customers').update({assigned_to: staffId}).eq('id', cId);
+        if (error) throw error;
+        toast('Đã cập nhật người phụ trách!', 'success');
+        await refresh();
+      } catch (err) {
+        toast(errorText(err), 'error');
+      }
     }
   });
 
